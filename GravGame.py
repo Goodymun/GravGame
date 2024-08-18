@@ -581,7 +581,7 @@ def draw_frame_def(screen,bods,home,target,buttons,flows):
 def is_dot_in_circle(dot,circle):
 	return (dot[0]-circle[0])**2+(dot[1]-circle[1])**2 < circle[2]**2
 
-def calc_mass_center(planet,holes): #planet[x,y,r], holes[[x,y,r],[x,y,r],...]
+def calc_mass_center(planet,holes): #planet[x,y,r], holes[[x,y,r],[x,y,r],...] #вычисление центра масс паленеты с учетом всех воронок
 	sum_x = 0 #сумма дифференциалов по x
 	sum_y = 0 #сумма дифференциалов по y
 	count_x = 0 #количество дифференциалов по x
@@ -609,6 +609,13 @@ def calc_mass_center(planet,holes): #planet[x,y,r], holes[[x,y,r],[x,y,r],...]
 		return [planet[0], planet[1]]
 	return [sum_x/count_x,sum_y/count_y] #расчет средних координат всех прошедших точек
 
+def make_home(): #создание стартовой позиции
+	edge_size = 100 #отступ от края
+	home_x = randint(SPACE[0]+edge_size,SPACE[2]-edge_size) #абсцисса в пределах космоса
+	home_y = randint(SPACE[1]+edge_size,SPACE[3]-edge_size) #ордината в пределах космоса
+	home_r = 5 #радиус стартовой позиции
+	return (home_x,home_y,home_r)
+
 def main_loop():
 	clock=pygame.time.Clock()
 	gamescreen = make_screen()
@@ -621,13 +628,13 @@ def main_loop():
 	state_ext = False #состояние завершения приложения
    
 	bods = []
-	home = (100,100,5)
 	#fields = False
 	buttons = [False,True,False,False,False,False] #field,graph,angle_lock,path,rotation,defence
 
 	while not state_ext:
 
 		if state_gen:
+			home = make_home()
 			body_count = randint(body_count_min,body_count_max)
 			bods = make_bods(body_count,body_radius,home)
 			target = make_target(bods)
