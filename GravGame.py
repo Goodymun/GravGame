@@ -16,6 +16,8 @@ pth_color=(230, 197, 227)
 hm_color=(190, 90, 255) #hm_color=(10, 60, 110)
 nk_color=(207, 50, 141)
 tg_color=(172, 224, 38)
+current_path_color = (230,150,100)
+last_path_color = (230,190,90)
 DIS_WIDTH  = 950
 DIS_HEIGHT = 1000
 SPACE = (15,15,737,981)
@@ -351,7 +353,7 @@ def draw_digits(screen,angle):
 	screen.blit(digit_w_pic[floor(seconds/10)],(x+w*5+g*2, y))
 	screen.blit(digit_w_pic[floor(seconds%10)],(x+w*6+g*2, y))
 	
-def draw_frame(screen,bods,home,speed,ang_corr,path,flows,nuke,damage,target,buttons,coord):
+def draw_frame(screen,bods,home,speed,ang_corr,path,flows,nuke,damage,target,buttons,coord,path_coord,last_shot):
 	screen.fill(bg_color)	
 	if buttons[0]:
 		for x in range(DIS_WIDTH // grid_number + 1):
@@ -413,11 +415,13 @@ def draw_frame(screen,bods,home,speed,ang_corr,path,flows,nuke,damage,target,but
 				#	yam = ya[len(ya)-1]
 			i+=1
 		screen.blit(background_pic,(0,0))
+		
 		pygame.draw.line(screen,(255,0,0),(758,546-speed*10*speed_number),(832,546-speed*10*speed_number),3)
-		#text = font.render(str(speed), True, hm_color)
-		#textRect = text.get_rect()
-		#textRect.topright = (DIS_WIDTH, 0)
-		#screen.blit(text, textRect)	
+		text = font.render(str(round(speed*speed_number,2)), True, (255,0,0))
+		textRect = text.get_rect()
+		textRect.center = (795, 540)
+		screen.blit(text, textRect)
+		
 		pygame.draw.line(screen,(255,0,0),(845,96),(845+70*cos(angle),96-70*sin(angle)),3)
 		draw_digits(screen,angle)
 		if buttons[1]:
@@ -437,6 +441,25 @@ def draw_frame(screen,bods,home,speed,ang_corr,path,flows,nuke,damage,target,but
 		pygame.draw.circle(screen,bg_color,(nuke[0],nuke[1]),damage_radius,0)
 		#pygame.draw.circle(screen,nk_color,(nuke[0],nuke[1]),damage_radius,1)
 		pygame.draw.circle(screen,nk_color,(nuke[0],nuke[1]),2,0)
+	
+	i = 1
+	while i < len(path_coord):
+		if i % 2 == 0:
+			color = last_path_color
+		else:
+			color = bg_color
+		if check_on_screen(path_coord[i]) and check_on_screen(path_coord[i-1]):
+			pygame.draw.line(screen,color,path_coord[i-1],path_coord[i])
+		i+=1
+	text = font.render(last_shot[0], True, last_path_color)
+	textRect = text.get_rect()
+	textRect.bottomleft = (750, 955) #758
+	screen.blit(text, textRect)
+	text = font.render(last_shot[1], True, last_path_color)
+	textRect = text.get_rect()
+	textRect.bottomleft = (750, 985)
+	screen.blit(text, textRect)
+	
 	pygame.draw.rect(screen,color_butt(buttons[0]),(850,260,90,30),0)
 	pygame.draw.rect(screen,color_butt(buttons[1]),(850,300,90,30),0)
 	pygame.draw.rect(screen,color_butt(buttons[3]),(850,340,90,30),0)
@@ -635,10 +658,13 @@ def main_loop():
 
 		if state_gen:
 			home = make_home()
+			last_path = []
+			current_path = []
+			last_shot = ['Speed:','Angle:']
 			body_count = randint(body_count_min,body_count_max)
 			bods = make_bods(body_count,body_radius,home)
 			target = make_target(bods)
-			momentum = 10
+			momentum = 10.0
 			angle_precision = 0 #2.2444
 			buttons[2] = True
 			if buttons[0]:
@@ -668,7 +694,7 @@ def main_loop():
 					angle = angle_by_coord(home,(nuke[2],nuke[3]),angle_precision)
 				if momentum_prev != momentum or angle_prev != angle:
 					coord = calc_path(bods,500,home,momentum/speed_number,angle)
-				draw_frame(gamescreen,bods,home,momentum/speed_number,angle_precision,True,flows,nuke,False,target,buttons,coord)#with path
+				draw_frame(gamescreen,bods,home,momentum/speed_number,angle_precision,True,flows,nuke,False,target,buttons,coord,last_path,last_shot)#with path
 				momentum_prev = momentum
 				angle_prev = angle
 
@@ -676,14 +702,18 @@ def main_loop():
 			if buttons[4]:
 				target = move_target(target,bods)
 			nuke = next_point(bods,(nuke[0],nuke[1]),(nuke[2],nuke[3]))
+			current_path.append([nuke[0],nuke[1]])
 			if collision_nuc(bods,home,nuke):
 				state_fly = False
 				state_res = True
 			else:
-				draw_frame(gamescreen,bods,home,0,0,False,flows,nuke,False,target,buttons,[])#with no path, no damage
+				draw_frame(gamescreen,bods,home,0,0,False,flows,nuke,False,target,buttons,[],current_path,last_shot)#with no path, no damage
 
 		if state_res:
-			draw_frame(gamescreen,bods,home,0,0,False,flows,nuke,True,target,buttons,[])#with damage
+			if current_path != []:
+				last_path = current_path
+				current_path = []
+			draw_frame(gamescreen,bods,home,0,0,False,flows,nuke,True,target,buttons,[],last_path,last_shot)#with damage
 			if success(nuke,target):
 				text = font.render("You win!", True, tg_color)
 			else:
@@ -695,6 +725,7 @@ def main_loop():
 		if state_restart_same_level:
 			momentum = 10
 			angle_precision = 0 #2.2444
+			current_path = []
 			buttons[2] = True
 			if buttons[0]:
 				flows = make_field_bis(bods)
@@ -742,6 +773,12 @@ def main_loop():
 							nuke = [home[0],home[1],vx,vy]
 							state_fly = True
 							state_aim = False
+							
+							totalSeconds = angle_by_coord(home,pygame.mouse.get_pos(),angle_precision) * 360 * 60 * 60 / (2 * pi)
+							seconds = round(totalSeconds % 60)
+							minutes = floor((totalSeconds / 60) % 60)
+							degrees = floor(totalSeconds / (60 * 60))
+							last_shot = ['Speed:' + str(round(momentum,1)),'Angle:' + str(degrees) + u'\N{DEGREE SIGN}' + str(minutes) + "'" + str(seconds) + '"']
 						elif state_fly:
 							state_res = True
 							state_fly = False
