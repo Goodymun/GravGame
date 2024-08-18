@@ -406,9 +406,9 @@ def draw_frame(screen,bods,home,speed,ang_corr,path,flows,nuke,damage,target,but
 	#screen.blit(transp_surface, (0,0))
 	pygame.draw.circle(screen,hm_color,(home[0],home[1]),home[2],1)
 	#if buttons[0]:
-		#for f in flows: #��� ���� ���������� �� �����
+		#for f in flows: #эта была нормальной до сетки
 			#pygame.draw.circle(screen,tg_color,(f[0],f[1]),1,0)
-			#pygame.draw.line(screen,bd_color,(f[0],f[1]),(f[0]+f[2],f[1]+f[3])) #��� ���� ���������� �� �����
+			#pygame.draw.line(screen,bd_color,(f[0],f[1]),(f[0]+f[2],f[1]+f[3])) #эта была нормальной до сетки
 			
 	if path:
 		if buttons[2]:
@@ -638,33 +638,33 @@ def draw_frame_def(screen,bods,home,target,buttons,flows):
 def is_dot_in_circle(dot,circle):
 	return (dot[0]-circle[0])**2+(dot[1]-circle[1])**2 < circle[2]**2
 
-def calc_mass_center(planet,holes): #planet[x,y,r], holes[[x,y,r],[x,y,r],...] #���������� ������ ���� �������� � ������ ���� �������
-	sum_x = 0 #����� �������������� �� x
-	sum_y = 0 #����� �������������� �� y
-	count_x = 0 #���������� �������������� �� x
-	count_y = 0 #���������� �������������� �� y
-	step = 2 #��� ��� ������ �������������
-	dy = planet[1] - planet[2] #�� ������� ���� �������
-	while dy <= planet[1] + planet[2]: #�� �������� ���� �������
-		dx = planet[0] - planet[2] #�� ������ ���� �������
-		while dx <= planet[0] + planet[2]: #�� ������� ���� �������
-			dot = (dx,dy) #������������������� ����� 
-			if is_dot_in_circle(dot,planet): #������ �������?
-				it_is = True #��, ������ �������
-				for hole in holes: #��� ������ �������
-					if is_dot_in_circle(dot,hole): #������ �������?
-						it_is = False #���, �� ������ �������
-						break #������ �� ����
-				if it_is: #���� ������ ������� - ��������� ����� � ������� ������ ����
+def calc_mass_center(planet,holes): #planet[x,y,r], holes[[x,y,r],[x,y,r],...] #вычисление центра масс паленеты с учетом всех воронок
+	sum_x = 0 #сумма дифференциалов по x
+	sum_y = 0 #сумма дифференциалов по y
+	count_x = 0 #количество дифференциалов по x
+	count_y = 0 #количество дифференциалов по y
+	step = 2 #шаг или размер дифференциала
+	dy = planet[1] - planet[2] #от нижнего края планеты
+	while dy <= planet[1] + planet[2]: #до верхнего края планеты
+		dx = planet[0] - planet[2] #от левого края планеты
+		while dx <= planet[0] + planet[2]: #до правого края планеты
+			dot = (dx,dy) #дифференциированная точка 
+			if is_dot_in_circle(dot,planet): #внутри планеты?
+				it_is = True #да, внутри планеты
+				for hole in holes: #для каждой воронки
+					if is_dot_in_circle(dot,hole): #внутри воронки?
+						it_is = False #нет, не внутри планеты
+						break #дальше не ищем
+				if it_is: #если внутри планеты - учитываем точку в расчете центра масс
 					sum_x += dx
 					sum_y += dy
 					count_x += 1
 					count_y += 1
 			dx += step
 		dy += step
-	if count_x == 0 or count_y == 0: #������ �� ������� �� ����
+	if count_x == 0 or count_y == 0: #оберег от деления на ноль
 		return [planet[0], planet[1]]
-	return [sum_x/count_x,sum_y/count_y] #������ ������� ��������� ���� ��������� �����
+	return [sum_x/count_x,sum_y/count_y] #расчет средних координат всех прошедших точек
 
 def make_home(): #создание стартовой позиции
 	edge_size = 100 #отступ от края
