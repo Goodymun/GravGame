@@ -323,6 +323,8 @@ def get_click(pos):
 		b=5
 	elif pygame.Rect(850,460,90,30).collidepoint(pos[0],pos[1]):
 		b=6
+	elif pygame.Rect(850,500,90,30).collidepoint(pos[0],pos[1]):
+		b=7
 	return b
 
 def draw_digits(screen,angle):
@@ -447,6 +449,8 @@ def draw_frame(screen,bods,home,speed,ang_corr,path,flows,nuke,damage,target,but
 	make_text_butt(screen,"SURVEY",850+45, 420+15)
 	pygame.draw.rect(screen,color_butt(False),(850,460,90,30),0)
 	make_text_butt(screen,"RE-GEN",850+45, 460+15)
+	pygame.draw.rect(screen,color_butt(False),(850,500,90,30),0)
+	make_text_butt(screen,"RESTRT",850+45, 500+15)
 
 def make_text_butt(screen,string,x,y):
 	text = font.render(string, True , tg_color)
@@ -510,6 +514,8 @@ def draw_frame_def(screen,bods,home,target,buttons,flows):
 	make_text_butt(screen,"SURVEY",850+45, 420+15)
 	pygame.draw.rect(screen,color_butt(False),(850,460,90,30),0)
 	make_text_butt(screen,"RE-GEN",850+45, 460+15)
+	pygame.draw.rect(screen,color_butt(False),(850,500,90,30),0)
+	make_text_butt(screen,"RESTRT",850+45, 500+15)
 
 	#pygame.draw.circle(screen,nk_color,(x,y),r,1)
 	pygame.draw.circle(screen,tg_color,(target[0],target[1]),target_radius,0)
@@ -607,11 +613,12 @@ def main_loop():
 	clock=pygame.time.Clock()
 	gamescreen = make_screen()
 	
-	state_gen = True
-	state_aim = False
-	state_fly = False
-	state_res = False
-	state_ext = False
+	state_gen = True #состояние создания нового уровня
+	state_aim = False #состояние прицеливания
+	state_fly = False #состояние полета снаряда
+	state_res = False #состояние отображения результата коллизии снаряда с планетой
+	state_restart_same_level = False #состояние перезапуска текущего уровня
+	state_ext = False #состояние завершения приложения
    
 	bods = []
 	home = (100,100,5)
@@ -678,6 +685,23 @@ def main_loop():
 			textRect.center = (DIS_WIDTH/2, DIS_HEIGHT/2)
 			gamescreen.blit(text, textRect)
 		
+		if state_restart_same_level:
+			momentum = 10
+			angle_precision = 0 #2.2444
+			buttons[2] = True
+			if buttons[0]:
+				flows = make_field_bis(bods)
+				flows_exist = True
+			else:
+				flows = []
+				flows_exist = False
+			nuke = [home[0],home[1],0,0]
+			state_aim = True
+			def_first = True
+			state_restart_same_level = False
+			momentum_prev = -1
+			angle_prev = -1
+
 		for event in pygame.event.get():
 			if event.type==pygame.QUIT:
 				state_ext = True
@@ -720,6 +744,14 @@ def main_loop():
 						state_fly = False
 						state_res = False
 						state_ext = False
+						state_restart_same_level = False
+					elif butt_click == 7:
+						state_gen = False
+						state_aim = False
+						state_fly = False
+						state_res = False
+						state_ext = False
+						state_restart_same_level = True
 					else:
 						buttons[butt_click] = not buttons[butt_click]
 						if buttons[0] and not flows_exist:
