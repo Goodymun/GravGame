@@ -572,6 +572,37 @@ def draw_frame_def(screen,bods,home,target,buttons,flows):
 		coord = calc_path(bods,P,home,s_win,a_win)
 		draw_path(screen,coord,buttons,a_win)
 
+def is_dot_in_circle(dot,circle):
+	return (dot[0]-circle[0])**2+(dot[1]-circle[1])**2 < circle[2]**2
+
+def calc_mass_center(planet,holes): #planet[x,y,r], holes[[x,y,r],[x,y,r],...]
+	sum_x = 0 #сумма дифференциалов по x
+	sum_y = 0 #сумма дифференциалов по y
+	count_x = 0 #количество дифференциалов по x
+	count_y = 0 #количество дифференциалов по y
+	step = 2 #шаг или размер дифференциала
+	dy = planet[1] - planet[2] #от нижнего края планеты
+	while dy <= planet[1] + planet[2]: #до верхнего края планеты
+		dx = planet[0] - planet[2] #от левого края планеты
+		while dx <= planet[0] + planet[2]: #до правого края планеты
+			dot = (dx,dy) #дифференциированная точка 
+			if is_dot_in_circle(dot,planet): #внутри планеты?
+				it_is = True #да, внутри планеты
+				for hole in holes: #для каждой воронки
+					if is_dot_in_circle(dot,hole): #внутри воронки?
+						it_is = False #нет, не внутри планеты
+						break #дальше не ищем
+				if it_is: #если внутри планеты - учитываем точку в расчете центра масс
+					sum_x += dx
+					sum_y += dy
+					count_x += 1
+					count_y += 1
+			dx += step
+		dy += step
+	if count_x == 0 or count_y == 0: #оберег от деления на ноль
+		return [planet[0], planet[1]]
+	return [sum_x/count_x,sum_y/count_y] #расчет средних координат всех прошедших точек
+
 def main_loop():
 	clock=pygame.time.Clock()
 	gamescreen = make_screen()

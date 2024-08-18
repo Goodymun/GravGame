@@ -1,0 +1,9 @@
+﻿################################################################################
+# Данный GITIGNORE-файл был автоматически создан Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/VSWorkspaceState.json
+/.vs/slnx.sqlite
+/.vs/GravGame/v17/DocumentLayout.json
+/.vs/GravGame/v17/.wsuo
+/.vs/GravGame/FileContentIndex
