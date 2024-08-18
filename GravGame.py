@@ -666,11 +666,11 @@ def calc_mass_center(planet,holes): #planet[x,y,r], holes[[x,y,r],[x,y,r],...] #
 		return [planet[0], planet[1]]
 	return [sum_x/count_x,sum_y/count_y] #������ ������� ��������� ���� ��������� �����
 
-def make_home(): #�������� ��������� �������
-	edge_size = 100 #������ �� ����
-	home_x = randint(SPACE[0]+edge_size,SPACE[2]-edge_size) #�������� � �������� �������
-	home_y = randint(SPACE[1]+edge_size,SPACE[3]-edge_size) #�������� � �������� �������
-	home_r = 5 #������ ��������� �������
+def make_home(): #создание стартовой позиции
+	edge_size = 100 #отступ от края
+	home_x = randint(SPACE[0]+edge_size,SPACE[2]-edge_size) #абсцисса в пределах космоса
+	home_y = randint(SPACE[1]+edge_size,SPACE[3]-edge_size) #ордината в пределах космоса
+	home_r = 5 #радиус стартовой позиции
 	return (home_x,home_y,home_r)
 
 def main_loop():
