@@ -1,7 +1,7 @@
 #from os import environ
 from random import randint, weibullvariate, random#, seed
 from math import sin, cos, atan2, degrees, pi, log, floor
-from warnings import catch_warnings#, copysign
+#from warnings import catch_warnings#, copysign
 from numpy import zeros
 #from turtle import Screen, bgcolor
 import pygame
@@ -150,8 +150,11 @@ def next_point(bods,point,vel):
 	y += vy
 	return [x,y,vx,vy]
 
-def calc_path(bods,cnt,pos,vel,ang):
-	path=[]
+def calc_path(bods,cnt,pos,vel,ang,target):
+	close_distance = 200
+	target_intersection = False
+	paths = []
+	path = []
 	path.append((pos[0],pos[1]))
 	i=0
 	x=pos[0]
@@ -161,12 +164,40 @@ def calc_path(bods,cnt,pos,vel,ang):
 	while i < cnt:
 		x,y,vx,vy = next_point(bods,(x,y),(vx,vy))
 		#x,y = i,i
+		if (x-target[0])**2 + (y-target[1])**2 < close_distance**2 and not target_intersection:
+			target_intersection = True
+			probability_point_x = x
+			probability_point_y = y
+			probability_speed_x = vx
+			probability_speed_y = vy
+			probability_count = i
 		if collision_nuc(bods,pos,(x,y)):
-			i = cnt+1
+			break
 		else:
 			path.append((x,y))
 		i+=1
-	return path
+	paths.append(path)
+	if target_intersection:
+		j = 0
+		while j < 4:
+			path = []
+			i=probability_count
+			x=probability_point_x
+			y=probability_point_y
+			vx=probability_speed_x + randint(-10,10)/100
+			vy=probability_speed_y + randint(-10,10)/100
+			while i < cnt:
+				x,y,vx,vy = next_point(bods,(x,y),(vx,vy))
+				if collision_nuc(bods,pos,(x,y)):
+					break
+				else:
+					path.append((x,y))
+				i+=1
+			if len(path) > 1:
+				paths.append(path)
+			j+=1
+	return paths
+	
 
 def calc_dist(bods,cnt,pos,vel,ang,tar):
 	i=0
@@ -308,8 +339,8 @@ def angle_by_coord(pos_1,pos_2,angle_corr):
 		angle %= 2*pi
 		return angle
 
-def check_on_screen(coord):
-	return coord[0]>=SPACE[0] and coord[0]<=SPACE[2] and coord[1]>=SPACE[1] and coord[1]<=SPACE[3]
+def check_on_screen(xy):
+	return xy[0]>=SPACE[0] and xy[0]<=SPACE[2] and xy[1]>=SPACE[1] and xy[1]<=SPACE[3]
 
 def get_click(pos):
 	b=-1
@@ -389,31 +420,32 @@ def draw_frame(screen,bods,home,speed,ang_corr,path,flows,nuke,damage,target,but
 		y = 566
 		w = 188
 		h = 88
-		dirs = []
-		dir_m = 0
-		xa = []
-		xam = 0
-		ya = []
-		yam = 0
-		i=1
-		while i < len(coord):
-			if i % 2 == 0 and (coord[i][0]-target[0])**2 + (coord[i][1]-target[1])**2 > 200**2:
-				color = pth_color
-			else:
-				color = bg_color
-			if buttons[3] and check_on_screen(coord[i]) and check_on_screen(coord[i-1]):
-				pygame.draw.line(screen,color,coord[i-1],coord[i])
-			if buttons[1]:
-				dirs.append(angle_by_coord(coord[i-1],coord[i],0))
-				xa.append(coord[i][0]%DIS_WIDTH)
-				ya.append(coord[i][1]%DIS_HEIGHT)
-				if dirs[len(dirs)-1]>dir_m:
-					dir_m = dirs[len(dirs)-1]
-				#if xa[len(xa)-1]>xam:
-				#	xam = xa[len(xa)-1]
-				#if ya[len(ya)-1]>yam:
-				#	yam = ya[len(ya)-1]
-			i+=1
+		for one_coord in coord:
+			dirs = []
+			dir_m = 0
+			xa = []
+			xam = 0
+			ya = []
+			yam = 0
+			i=1
+			while i < len(one_coord):
+				if i % 2 == 0 and (one_coord[i][0]-target[0])**2 + (one_coord[i][1]-target[1])**2 > 150**2:
+					color = pth_color
+				else:
+					color = bg_color
+				if buttons[3] and check_on_screen(one_coord[i]) and check_on_screen(one_coord[i-1]):
+					pygame.draw.line(screen,color,one_coord[i-1],one_coord[i])
+				if buttons[1]:
+					dirs.append(angle_by_coord(one_coord[i-1],one_coord[i],0))
+					xa.append(one_coord[i][0]%DIS_WIDTH)
+					ya.append(one_coord[i][1]%DIS_HEIGHT)
+					if dirs[len(dirs)-1]>dir_m:
+						dir_m = dirs[len(dirs)-1]
+					#if xa[len(xa)-1]>xam:
+					#	xam = xa[len(xa)-1]
+					#if ya[len(ya)-1]>yam:
+					#	yam = ya[len(ya)-1]
+				i+=1
 		screen.blit(background_pic,(0,0))
 		
 		pygame.draw.line(screen,(255,0,0),(758,546-speed*10*speed_number),(832,546-speed*10*speed_number),3)
@@ -490,19 +522,21 @@ def draw_path(screen,coord,buttons,angle):
 	y = 566
 	w = 188
 	h = 88
+	
+	one_coord = coord[0]
 
 	i=1
-	while i < len(coord):
+	while i < len(one_coord):
 		if i % 2 == 0:
 			color = pth_color
 		else:
 			color = bg_color
-		if check_on_screen(coord[i]) and check_on_screen(coord[i-1]):
-			pygame.draw.line(screen,color,coord[i-1],coord[i])
+		if check_on_screen(one_coord[i]) and check_on_screen(one_coord[i-1]):
+			pygame.draw.line(screen,color,one_coord[i-1],one_coord[i])
 		if buttons[1]:
-			dirs.append(angle_by_coord(coord[i-1],coord[i],0))
-			xa.append(coord[i][0]%DIS_WIDTH)
-			ya.append(coord[i][1]%DIS_HEIGHT)
+			dirs.append(angle_by_coord(one_coord[i-1],one_coord[i],0))
+			xa.append(one_coord[i][0]%DIS_WIDTH)
+			ya.append(one_coord[i][1]%DIS_HEIGHT)
 			if dirs[len(dirs)-1]>dir_m:
 				dir_m = dirs[len(dirs)-1]
 		i+=1
@@ -585,7 +619,7 @@ def draw_frame_def(screen,bods,home,target,buttons,flows):
 			color = color_grad_bis(d_min,500)
 			#screen.set_at((x,y), color)
 			pygame.draw.circle(screen, color, (round(r*cos(angle) + xc),round(-r*sin(angle) + yc)), round(rc/N/2), 0)
-		coord = calc_path(bods,P,home,s_here,a_here)
+		coord = calc_path(bods,P,home,s_here,a_here,[])
 		draw_path(screen,coord,buttons,a_here)
 		pygame.display.update()
 	if p_max != -1:
@@ -598,7 +632,7 @@ def draw_frame_def(screen,bods,home,target,buttons,flows):
 		for body in bods:
 			pygame.draw.circle(screen,color_grad(body[4]),(body[0],body[1]),body[2])
 			screen.blit(body[5], (body[0]-body[2], body[1]-body[2]))
-		coord = calc_path(bods,P,home,s_win,a_win)
+		coord = calc_path(bods,P,home,s_win,a_win,[])
 		draw_path(screen,coord,buttons,a_win)
 
 def is_dot_in_circle(dot,circle):
@@ -693,7 +727,7 @@ def main_loop():
 				else:
 					angle = angle_by_coord(home,(nuke[2],nuke[3]),angle_precision)
 				if momentum_prev != momentum or angle_prev != angle:
-					coord = calc_path(bods,500,home,momentum/speed_number,angle)
+					coord = calc_path(bods,500,home,momentum/speed_number,angle,target)
 				draw_frame(gamescreen,bods,home,momentum/speed_number,angle_precision,True,flows,nuke,False,target,buttons,coord,last_path,last_shot)#with path
 				momentum_prev = momentum
 				angle_prev = angle
