@@ -1,7 +1,7 @@
 import pygame
 import sys
 from random import randint, weibullvariate
-from math import pi
+from math import pi, cos, sin
 
 # Инициализация Pygame
 pygame.init()
@@ -19,8 +19,9 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 COLOR_BACKGROUND = (30, 30, 30)
 COLOR_PLANET = (60, 120, 180)
-COLOR_STARTPOSITION = (169, 110, 220)
+COLOR_STARTPOSITION = (170, 110, 220)
 COLOR_BUTTONS = (180, 210, 130)
+COLOR_PROJECTILE = (210, 50, 140)
 
 # Растры
 PLANETS_PICTURES = []
@@ -29,6 +30,9 @@ for i in range(1, 22):
 
 # Константы
 PLANET_MAX_DENCITY = 50
+MIN_DISTANCE_STARTPOSITION_PLANETS = 50
+SPEED_M_NUMBER = 3 #10
+GRAVITY_M_NUMBER = 4668.82828 * SPEED_M_NUMBER**-1.98848 #50
 
 # Состояния игры
 class GameState:
@@ -63,7 +67,7 @@ class Planet:
 			self.radius = 2 # Черная дыра
 		else:
 			self.radius = radius
-		#self.density = density
+		self.density = density
 		self.color = planet_color_gradient(density)
 		self.picture = pygame.transform.scale(PLANETS_PICTURES[randint(0, 20)], (self.radius * 2 + 0, self.radius * 2 + 0))
 		self.mass = density * 4 / 3 * pi * radius**3 * .000001
@@ -114,6 +118,81 @@ def is_collide_planets(planets, x, y, delta):
 			return True
 	return False
 
+def calculate_acceleration(planets, x, y):
+	acceleration_x = 0
+	acceleration_y = 0
+	for planet in planets:
+		delta_x = planet.x_mass - x # проекция расстояния между снярядом и планетой
+		delta_y = planet.y_mass - y # проекция расстояния между снярядом и планетой
+		if delta_x != 0 and delta_y != 0:
+			k = GRAVITY_M_NUMBER / (delta_x**2 + delta_y**2)**1.5  # притягивающий коэффициент
+			acceleration_x += delta_x * k * planet.mass
+			acceleration_y += delta_y * k * planet.mass
+	return (acceleration_x, acceleration_y)
+
+# Класс стартовая позиция
+class StartPosition:
+	def __init__(self, x, y, radius):
+		self.x = x
+		self.y = y
+		self.position = (x, y)
+		self.radius = radius
+		self.color = COLOR_STARTPOSITION
+
+	def draw(self, screen):
+		pygame.draw.circle(screen, self.color, self.position, self.radius)
+
+def startPosition_create(planets):
+	searching = True
+	startPosition_radius = 5
+	while searching:
+		x = randint(startPosition_radius + 10, WIDTH - 150 - startPosition_radius - 10)
+		y = randint(startPosition_radius + 10, HEIGHT - startPosition_radius - 10)
+		if not is_collide_planets(planets, x, y, startPosition_radius + MIN_DISTANCE_STARTPOSITION_PLANETS):
+			searching = False
+	return StartPosition(x, y, startPosition_radius)
+
+# Класс снаряда
+class ProjectilesState:
+	MOVING = 'moving'
+	WAITING = 'waiting'
+	EXPLODING = 'exploding'
+
+class Projectiles:
+	def __init__(self, state, x, y):
+		self.x = x
+		self.y = y
+		self.position = (x, y)
+		self.velocity_x = 0
+		self.velocity_y = 0
+		#self.velocityAngle = atan2(velocity_x, velocity_y)
+		self.acceleration_x = 0
+		self.acceleration_y = 0
+		self.radius = 3
+		self.color = COLOR_PROJECTILE
+		self.state = state
+
+	def move(self, planets):
+		self.acceleration_x, self.acceleration_y = calculate_acceleration(planets, self.x, self.y)
+		self.velocity_x += self.acceleration_x
+		self.velocity_y += self.acceleration_y
+		self.x += self.velocity_x
+		self.y += self.velocity_y
+		self.position = (self.x, self.y)
+		if is_collide_planets(planets, self.x, self.y, 0):
+			self.state = ProjectilesState.EXPLODING
+
+	def shoot(self, speed, angle):
+		self.velocity_x = speed * cos(angle)
+		self.velocity_y = speed * sin(angle)
+		self.state = ProjectilesState.MOVING
+
+	def draw(self, screen):
+		if self.state == ProjectilesState.MOVING:
+			pygame.draw.circle(screen, self.color, self.position, self.radius)
+		elif self.state == ProjectilesState.EXPLODING:
+			pygame.draw.circle(screen, COLOR_BACKGROUND, self.position, 20)
+
 # Главная игра
 class Game:
 	def __init__(self):
@@ -123,9 +202,14 @@ class Game:
 			Button("Quit", 750, 300, 100, 50, self.quit_game)
 		]
 		self.planets = []
+		self.startPosition = StartPosition(0, 0, 0)
+		self.projectile = Projectiles(ProjectilesState.WAITING, 0, 0)
 
 	def regen(self):
 		self.planets = planets_create(20)
+		self.startPosition = startPosition_create(self.planets)
+		self.projectile.x, self.projectile.y = self.startPosition.position
+		self.projectile.state = ProjectilesState.WAITING
 
 	def quit_game(self):
 		pygame.quit()
@@ -150,18 +234,25 @@ class Game:
 				if event.type == pygame.KEYDOWN:
 					if event.key == pygame.K_ESCAPE:
 						self.state = GameState.QUIT
+					if event.key == pygame.K_SPACE:
+						if self.projectile.state == ProjectilesState.WAITING:
+							self.projectile.shoot(10, 0)
 
 	def update(self):
-		pass
+		if self.projectile.state == ProjectilesState.MOVING:
+			self.projectile.move(self.planets)
 
 	def draw(self):
 		SCREEN.fill(COLOR_BACKGROUND)
 
+		for button in self.buttons:
+			button.draw(SCREEN)
+
 		for planet in self.planets:
 			planet.draw(SCREEN)
 
-		for batton in self.buttons:
-			batton.draw(SCREEN)
+		self.startPosition.draw(SCREEN)
+		self.projectile.draw(SCREEN)
 
 		pygame.display.flip()
 
