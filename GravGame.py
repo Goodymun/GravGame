@@ -1,13 +1,14 @@
 import pygame
 import sys
-from random import randint
+from random import randint, weibullvariate
+from math import pi
 
 # Инициализация Pygame
 pygame.init()
 
 # Параметры экрана
 WIDTH, HEIGHT = 900, 900
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("GravGame")
 
 # Цвета
@@ -20,6 +21,14 @@ COLOR_BACKGROUND = (30, 30, 30)
 COLOR_PLANET = (60, 120, 180)
 COLOR_STARTPOSITION = (169, 110, 220)
 COLOR_BUTTONS = (180, 210, 130)
+
+# Растры
+PLANETS_PICTURES = []
+for i in range(1, 22):
+	PLANETS_PICTURES.append(pygame.image.load("bods/body" + str(i) + ".png"))
+
+# Константы
+PLANET_MAX_DENCITY = 50
 
 # Состояния игры
 class GameState:
@@ -45,12 +54,65 @@ class Button:
 
 # Класс планеты
 class Planet:
-	def __init__(self, x, y, radius):
-		self.position = (x, y)
+	def __init__(self, x_planet, y_planet, radius, density):
+		self.x_planet = x_planet
+		self.y_planet = y_planet
+		self.position = (x_planet, y_planet)
 		self.radius = radius
-	
+		if density > PLANET_MAX_DENCITY:
+			self.radius = 2 # Черная дыра
+		else:
+			self.radius = radius
+		#self.density = density
+		self.color = planet_color_gradient(density)
+		self.picture = pygame.transform.scale(PLANETS_PICTURES[randint(0, 20)], (self.radius * 2 + 0, self.radius * 2 + 0))
+		self.mass = density * 4 / 3 * pi * radius**3 * .000001
+		self.x_mass = x_planet
+		self.y_mass = y_planet
+
 	def draw(self, screen):
-		pygame.draw.circle(screen,COLOR_PLANET,self.position,self.radius)
+		pygame.draw.circle(screen, self.color, self.position, self.radius)
+		screen.blit(self.picture, (self.x_planet - self.radius, self.y_planet - self.radius))
+		pygame.draw.circle(screen, BLACK, self.position, self.radius, 1)
+	
+	def is_collided(self, x, y, delta):
+		return (self.x_planet - x)**2 + (self.y_planet - y)**2 <= (self.radius + delta)**2
+
+def planet_color_gradient(density):
+	k = density / PLANET_MAX_DENCITY
+	r = round(max(0, 255 * (k - 0.5)))
+	g = round(max(0, 255 * (1 - 2 * k)))
+	b = 255
+	return (min(127, r), g, b)
+
+def planet_density_distribution():
+	PLANET_A_DENCITY = 7 # Альфа, масштаб распределения Вейбулла
+	PLANET_B_DENCITY = 1.5 # Бета, форма распределения Вейбулла
+	if randint(0, 500) == 21: # Вероятность создания черной дыры
+		return PLANET_MAX_DENCITY * 1000
+	return min(PLANET_MAX_DENCITY, PLANET_A_DENCITY / 2 + weibullvariate(PLANET_A_DENCITY, PLANET_B_DENCITY))
+
+def planets_create(count):
+	planets = []
+	i = 0
+	while i < count:
+		searching = True
+		while searching:
+			radius_planet = randint(10, 100)
+			x_planet = randint(radius_planet + 10, WIDTH - 150 - radius_planet - 10)
+			y_planet = randint(radius_planet + 10, HEIGHT - radius_planet - 10)
+			if not is_collide_planets(planets, x_planet, y_planet, radius_planet * 1.2):
+				searching = False
+		density_planet = planet_density_distribution()
+		planets.append(Planet(x_planet, y_planet, radius_planet, density_planet))
+		i += 1
+	return planets
+
+def is_collide_planets(planets, x, y, delta):
+	for planet in planets:
+		if planet.is_collided(x, y, delta):
+			return True
+	return False
 
 # Главная игра
 class Game:
@@ -63,11 +125,7 @@ class Game:
 		self.planets = []
 
 	def regen(self):
-		self.planets = []
-		i = 0
-		while i < 3:
-			self.planets.append(Planet(randint(100,500), randint(100,500), randint(10,100)))
-			i += 1
+		self.planets = planets_create(20)
 
 	def quit_game(self):
 		pygame.quit()
@@ -97,13 +155,13 @@ class Game:
 		pass
 
 	def draw(self):
-		screen.fill(COLOR_BACKGROUND)
+		SCREEN.fill(COLOR_BACKGROUND)
 
 		for planet in self.planets:
-			planet.draw(screen)
+			planet.draw(SCREEN)
 
 		for batton in self.buttons:
-			batton.draw(screen)
+			batton.draw(SCREEN)
 
 		pygame.display.flip()
 
