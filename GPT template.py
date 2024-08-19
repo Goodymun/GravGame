@@ -1,27 +1,29 @@
+ # -*- coding: utf8 -*-
+
 import pygame
 import sys
 
-# Инициализация Pygame
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Pygame
 pygame.init()
 
-# Параметры экрана
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Simple Game Template")
 
-# Цвета
+# пїЅпїЅпїЅпїЅпїЅ
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 
-# Состояния игры
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 class GameState:
     MENU = 'menu'
     PLAYING = 'playing'
     GAME_OVER = 'game_over'
 
-# Класс кнопки
+# пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 class Button:
     def __init__(self, text, x, y, width, height, callback):
         self.text = text
@@ -38,7 +40,7 @@ class Button:
     def is_clicked(self, pos):
         return self.rect.collidepoint(pos)
 
-# Главная игра
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 class Game:
     def __init__(self):
         self.state = GameState.MENU
@@ -46,7 +48,7 @@ class Game:
             Button("Start Game", 300, 200, 200, 50, self.start_game),
             Button("Quit", 300, 300, 200, 50, self.quit_game)
         ]
-        self.player = pygame.Rect(50, 50, 50, 50)  # Игрок
+        self.player = pygame.Rect(50, 50, 50, 50)  # пїЅпїЅпїЅпїЅпїЅ
         self.player_speed = 5
 
     def start_game(self):

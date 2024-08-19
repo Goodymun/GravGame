@@ -1,4 +1,5 @@
 import pygame
+import os
 import sys
 from random import randint, weibullvariate
 from math import pi
@@ -23,15 +24,21 @@ COLOR_STARTPOSITION = (169, 110, 220)
 COLOR_BUTTONS = (180, 210, 130)
 
 # Растры
+#///////////////////////////////////////
 PLANETS_PICTURES = []
-for i in range(1, 22):
-	PLANETS_PICTURES.append(pygame.image.load("bods/body" + str(i) + ".png"))
+image_dir = "bods/"
+for image_file in os.listdir(image_dir):
+	image_path = os.path.join(image_dir, image_file)
+	image = pygame.image.load(image_path)
+	PLANETS_PICTURES.append(image)
+#///////////////////////////////////////
 
 # Константы
 PLANET_MAX_DENCITY = 50
 
 # Состояния игры
 class GameState:
+	MENU = 'menu'
 	TEMP = 'temp'
 	GAME_OVER = 'game_over'
 
@@ -117,9 +124,9 @@ def is_collide_planets(planets, x, y, delta):
 # Главная игра
 class Game:
 	def __init__(self):
-		self.state = GameState.TEMP
+		self.state = GameState.MENU
 		self.buttons = [
-			Button("REGEN", 750, 200, 100, 50, self.regen),
+			Button("START GAME", 750, 200, 100, 50, self.regen),
 			Button("Quit", 750, 300, 100, 50, self.quit_game)
 		]
 		self.planets = []
@@ -140,13 +147,13 @@ class Game:
 				pygame.quit()
 				sys.exit()
 
-			if self.state == GameState.TEMP:
+			if self.state == GameState.MENU:
 				if event.type == pygame.MOUSEBUTTONDOWN:
 					for button in self.buttons:
 						if button.is_clicked(event.pos):
 							button.callback()
 
-			if self.state == GameState.TEMP:
+			if self.state == GameState.MENU:
 				if event.type == pygame.KEYDOWN:
 					if event.key == pygame.K_ESCAPE:
 						self.state = GameState.QUIT
@@ -165,13 +172,24 @@ class Game:
 
 		pygame.display.flip()
 
+	def screen_menu(self):
+		SCREEN.fill(COLOR_BACKGROUND)
+
+		# for planet in self.planets:
+		# 	planet.draw(SCREEN)
+
+		for batton in self.buttons:
+			batton.draw(SCREEN)
+
+		pygame.display.flip()
+
 	def run(self):
 		clock = pygame.time.Clock()
 		self.regen()
 		while True:
 			self.handle_events()
 			self.update()
-			self.draw()
+			self.screen_menu()
 			clock.tick(30)
 
 if __name__ == "__main__":
