@@ -152,7 +152,7 @@ def startPosition_create(planets):
 			searching = False
 	return StartPosition(x, y, startPosition_radius)
 
-# Класс снаряда
+# Класс снаряд
 class ProjectilesState:
 	MOVING = 'moving'
 	WAITING = 'waiting'
@@ -193,6 +193,33 @@ class Projectiles:
 		elif self.state == ProjectilesState.EXPLODING:
 			pygame.draw.circle(screen, COLOR_BACKGROUND, self.position, 20)
 
+# Класс траектории
+class Trajectory:
+	def __init__(self, x_start, y_start, x_velocity, y_velocity, steps_count, planets):
+		self.coordinates = calculate_trajectory(x_start, y_start, x_velocity, y_velocity, steps_count, planets)
+		self.color = COLOR_PROJECTILE
+
+	def draw(self, screen):
+		i = 1
+		while i < len(self.coordinates):
+			if i % 2 == 1:
+				pygame.draw.line(screen, self.color, self.coordinates[i-1], self.coordinates[i])
+			i += 1
+
+def calculate_trajectory(x_start, y_start, x_velocity, y_velocity, steps_count, planets):
+	coordinates = []
+	phantom_projectile = Projectiles(ProjectilesState.MOVING, x_start, y_start)
+	phantom_projectile.velocity_x, phantom_projectile.velocity_y = x_velocity, y_velocity
+	i = 0
+	while i < steps_count:
+		if phantom_projectile.state == ProjectilesState.MOVING:
+			coordinates.append((phantom_projectile.x, phantom_projectile.y))
+		else:
+			break
+		phantom_projectile.move(planets)
+		i += 1
+	return coordinates
+
 # Главная игра
 class Game:
 	def __init__(self):
@@ -204,12 +231,14 @@ class Game:
 		self.planets = []
 		self.startPosition = StartPosition(0, 0, 0)
 		self.projectile = Projectiles(ProjectilesState.WAITING, 0, 0)
+		self.trajectorys = []
 
 	def regen(self):
-		self.planets = planets_create(20)
+		self.planets = planets_create(10)
 		self.startPosition = startPosition_create(self.planets)
 		self.projectile.x, self.projectile.y = self.startPosition.position
 		self.projectile.state = ProjectilesState.WAITING
+		self.trajectorys = [Trajectory(self.projectile.x, self.projectile.y, 10, 0, 50, self.planets)]
 
 	def quit_game(self):
 		pygame.quit()
@@ -241,6 +270,9 @@ class Game:
 	def update(self):
 		if self.projectile.state == ProjectilesState.MOVING:
 			self.projectile.move(self.planets)
+		elif self.projectile.state == ProjectilesState.WAITING:
+			for trajectory in self.trajectorys:
+				trajectory.coordinates = calculate_trajectory(self.projectile.x, self.projectile.y, 10, 0, 50, self.planets)
 
 	def draw(self):
 		SCREEN.fill(COLOR_BACKGROUND)
@@ -253,6 +285,10 @@ class Game:
 
 		self.startPosition.draw(SCREEN)
 		self.projectile.draw(SCREEN)
+
+		if self.projectile.state == ProjectilesState.WAITING:
+			for trajectory in self.trajectorys:
+				trajectory.draw(SCREEN)
 
 		pygame.display.flip()
 
