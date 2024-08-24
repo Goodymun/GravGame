@@ -2,6 +2,7 @@ import pygame
 import sys
 from random import randint, weibullvariate
 from math import pi, cos, sin
+from copy import copy
 
 # Инициализация Pygame
 pygame.init()
@@ -22,6 +23,7 @@ COLOR_PLANET = (60, 120, 180)
 COLOR_STARTPOSITION = (170, 110, 220)
 COLOR_BUTTONS = (180, 210, 130)
 COLOR_PROJECTILE = (210, 50, 140)
+COLOR_TARGET = (170, 220, 40)
 
 # Растры
 PLANETS_PICTURES = []
@@ -153,12 +155,12 @@ def startPosition_create(planets):
 	return StartPosition(x, y, startPosition_radius)
 
 # Класс снаряд
-class ProjectilesState:
+class ProjectileState:
 	MOVING = 'moving'
 	WAITING = 'waiting'
 	EXPLODING = 'exploding'
 
-class Projectiles:
+class Projectile:
 	def __init__(self, state, x, y):
 		self.x = x
 		self.y = y
@@ -180,45 +182,72 @@ class Projectiles:
 		self.y += self.velocity_y
 		self.position = (self.x, self.y)
 		if is_collide_planets(planets, self.x, self.y, 0):
-			self.state = ProjectilesState.EXPLODING
+			self.state = ProjectileState.EXPLODING
 
 	def shoot(self, speed, angle):
 		self.velocity_x = speed * cos(angle)
 		self.velocity_y = speed * sin(angle)
-		self.state = ProjectilesState.MOVING
+		self.state = ProjectileState.MOVING
 
 	def draw(self, screen):
-		if self.state == ProjectilesState.MOVING:
+		if self.state == ProjectileState.MOVING:
 			pygame.draw.circle(screen, self.color, self.position, self.radius)
-		elif self.state == ProjectilesState.EXPLODING:
+		elif self.state == ProjectileState.EXPLODING:
 			pygame.draw.circle(screen, COLOR_BACKGROUND, self.position, 20)
 
 # Класс траектории
 class Trajectory:
-	def __init__(self, x_start, y_start, x_velocity, y_velocity, steps_count, planets):
-		self.coordinates = calculate_trajectory(x_start, y_start, x_velocity, y_velocity, steps_count, planets)
+	def __init__(self, x_start, y_start, x_velocity, y_velocity):
+		self.x_start = x_start
+		self.y_start = y_start
+		self.x_velocity = x_velocity
+		self.y_velocity = y_velocity
+		self.coordinates = []
 		self.color = COLOR_PROJECTILE
 
 	def draw(self, screen):
 		i = 1
 		while i < len(self.coordinates):
 			if i % 2 == 1:
-				pygame.draw.line(screen, self.color, self.coordinates[i-1], self.coordinates[i])
+				pygame.draw.line(screen, self.color, self.coordinates[i - 1], self.coordinates[i])
 			i += 1
 
-def calculate_trajectory(x_start, y_start, x_velocity, y_velocity, steps_count, planets):
-	coordinates = []
-	phantom_projectile = Projectiles(ProjectilesState.MOVING, x_start, y_start)
-	phantom_projectile.velocity_x, phantom_projectile.velocity_y = x_velocity, y_velocity
-	i = 0
-	while i < steps_count:
-		if phantom_projectile.state == ProjectilesState.MOVING:
-			coordinates.append((phantom_projectile.x, phantom_projectile.y))
-		else:
-			break
-		phantom_projectile.move(planets)
-		i += 1
-	return coordinates
+	def calculate(self, steps_count, planets):
+		self.coordinates = []
+		phantom_projectile = Projectile(ProjectileState.MOVING, self.x_start, self.y_start)
+		i = 0
+		while i < steps_count:
+			if phantom_projectile.state == ProjectileState.MOVING:
+				self.coordinates.append(phantom_projectile.position)
+			else:
+				break
+			phantom_projectile.move(planets)
+			i += 1
+
+# Класс цель
+class Target:
+	def __init__(self, planet, angle):
+		self.x_planet = planet.x_planet
+		self.y_planet = planet.y_planet
+		self.r_planet = planet.radius
+		self.x = planet.x_planet + planet.radius * cos(angle)
+		self.y = planet.y_planet + planet.radius * sin(angle)
+		self.position = (self.x, self.y)
+		self.angle = angle
+		self.angle_speed = 0
+		self.radius = 3
+		self.color = COLOR_TARGET
+
+	def move(self):
+		if self.angle_speed != 0:
+			self.angle += self.angle_speed
+			self.angle %= 2 * pi
+			self.x = self.x_planet + self.r_planet * cos(self.angle)
+			self.y = self.y_planet + self.r_planet * sin(self.angle)
+			self.position = (self.x, self.y)
+
+	def draw(self, screen):
+		pygame.draw.circle(screen, self.color, self.position, self.radius)
 
 # Главная игра
 class Game:
@@ -228,17 +257,20 @@ class Game:
 			Button("REGEN", 750, 200, 100, 50, self.regen),
 			Button("Quit", 750, 300, 100, 50, self.quit_game)
 		]
-		self.planets = []
-		self.startPosition = StartPosition(0, 0, 0)
-		self.projectile = Projectiles(ProjectilesState.WAITING, 0, 0)
-		self.trajectorys = []
+		# self.planets = []
+		# self.startPosition = StartPosition(0, 0, 0)
+		# self.projectile = Projectile(ProjectilesState.WAITING, 0, 0)
+		# self.trajectory = []
 
 	def regen(self):
 		self.planets = planets_create(10)
+		self.target = Target(self.planets[5], 0)
+		self.target.angle_speed = 0.1
 		self.startPosition = startPosition_create(self.planets)
-		self.projectile.x, self.projectile.y = self.startPosition.position
-		self.projectile.state = ProjectilesState.WAITING
-		self.trajectorys = [Trajectory(self.projectile.x, self.projectile.y, 10, 0, 50, self.planets)]
+		self.projectile = Projectile(ProjectileState.WAITING, self.startPosition.x, self.startPosition.y)
+		self.projectile.velocity_x, self.projectile.velocity_y = (10, 0)
+		self.trajectory = Trajectory(self.projectile.x, self.projectile.y, self.projectile.velocity_x, self.projectile.velocity_y)
+		self.trajectory.calculate(50, self.planets)
 
 	def quit_game(self):
 		pygame.quit()
@@ -264,32 +296,27 @@ class Game:
 					if event.key == pygame.K_ESCAPE:
 						self.state = GameState.QUIT
 					if event.key == pygame.K_SPACE:
-						if self.projectile.state == ProjectilesState.WAITING:
+						if self.projectile.state == ProjectileState.WAITING:
 							self.projectile.shoot(10, 0)
 
 	def update(self):
-		if self.projectile.state == ProjectilesState.MOVING:
+		if self.projectile.state == ProjectileState.MOVING:
 			self.projectile.move(self.planets)
-		elif self.projectile.state == ProjectilesState.WAITING:
-			for trajectory in self.trajectorys:
-				trajectory.coordinates = calculate_trajectory(self.projectile.x, self.projectile.y, 10, 0, 50, self.planets)
+		elif self.projectile.state == ProjectileState.WAITING:
+			self.trajectory.calculate(50, self.planets)
+		self.target.move()
 
 	def draw(self):
 		SCREEN.fill(COLOR_BACKGROUND)
-
 		for button in self.buttons:
 			button.draw(SCREEN)
-
+		if self.projectile.state == ProjectileState.WAITING:
+			self.trajectory.draw(SCREEN)
+		self.startPosition.draw(SCREEN)
+		self.target.draw(SCREEN)
+		self.projectile.draw(SCREEN)
 		for planet in self.planets:
 			planet.draw(SCREEN)
-
-		self.startPosition.draw(SCREEN)
-		self.projectile.draw(SCREEN)
-
-		if self.projectile.state == ProjectilesState.WAITING:
-			for trajectory in self.trajectorys:
-				trajectory.draw(SCREEN)
-
 		pygame.display.flip()
 
 	def run(self):
