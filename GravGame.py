@@ -75,11 +75,14 @@ class Planet:
 		self.mass = density * 4 / 3 * pi * radius**3 * .000001
 		self.x_mass = x_planet
 		self.y_mass = y_planet
+		self.holes = []
 
 	def draw(self, screen):
 		pygame.draw.circle(screen, self.color, self.position, self.radius)
 		screen.blit(self.picture, (self.x_planet - self.radius, self.y_planet - self.radius))
 		pygame.draw.circle(screen, BLACK, self.position, self.radius, 1)
+		for hole in self.holes:
+			hole.draw(screen)
 	
 	def is_collided(self, x, y, delta):
 		return (self.x_planet - x)**2 + (self.y_planet - y)**2 <= (self.radius + delta)**2
@@ -131,6 +134,18 @@ def calculate_acceleration(planets, x, y):
 			acceleration_x += delta_x * k * planet.mass
 			acceleration_y += delta_y * k * planet.mass
 	return (acceleration_x, acceleration_y)
+
+# Класс воронки
+class Hole:
+	def __init__(self, x, y, radius):
+		self.x = x
+		self.y = y
+		self.position = (x, y)
+		self.radius = radius
+		self.color = COLOR_BACKGROUND
+
+	def draw(self, screen):
+		pygame.draw.circle(screen, self.color, self.position, self.radius)
 
 # Класс стартовая позиция
 class StartPosition:
@@ -215,6 +230,7 @@ class Trajectory:
 	def calculate(self, steps_count, planets):
 		self.coordinates = []
 		phantom_projectile = Projectile(ProjectileState.MOVING, self.x_start, self.y_start)
+		phantom_projectile.velocity_x, phantom_projectile.velocity_x = self.x_velocity, self.x_velocity
 		i = 0
 		while i < steps_count:
 			if phantom_projectile.state == ProjectileState.MOVING:
@@ -314,9 +330,9 @@ class Game:
 			self.trajectory.draw(SCREEN)
 		self.startPosition.draw(SCREEN)
 		self.target.draw(SCREEN)
-		self.projectile.draw(SCREEN)
 		for planet in self.planets:
 			planet.draw(SCREEN)
+		self.projectile.draw(SCREEN)
 		pygame.display.flip()
 
 	def run(self):
