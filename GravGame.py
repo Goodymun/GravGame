@@ -6,6 +6,7 @@ from copy import copy
 
 # Инициализация Pygame
 pygame.init()
+DEBUG_MODE = True
 
 # Параметры экрана
 WIDTH, HEIGHT = 900, 900
@@ -31,7 +32,7 @@ for i in range(1, 22):
 	PLANETS_PICTURES.append(pygame.image.load("bods/body" + str(i) + ".png"))
 
 # Константы
-PLANET_MAX_DENCITY = 50
+PLANET_MAX_DENSITY = 50
 MIN_DISTANCE_STARTPOSITION_PLANETS = 50
 SPEED_M_NUMBER = 3 #10
 GRAVITY_M_NUMBER = 4668.82828 * SPEED_M_NUMBER**-1.98848 #50
@@ -65,7 +66,7 @@ class Planet:
 		self.y_planet = y_planet
 		self.position = (x_planet, y_planet)
 		self.radius = radius
-		if density > PLANET_MAX_DENCITY:
+		if density > PLANET_MAX_DENSITY:
 			self.radius = 2 # Черная дыра
 		else:
 			self.radius = radius
@@ -88,18 +89,18 @@ class Planet:
 		return (self.x_planet - x)**2 + (self.y_planet - y)**2 <= (self.radius + delta)**2
 
 def planet_color_gradient(density):
-	k = density / PLANET_MAX_DENCITY
+	k = density / PLANET_MAX_DENSITY
 	r = round(max(0, 255 * (k - 0.5)))
 	g = round(max(0, 255 * (1 - 2 * k)))
 	b = 255
 	return (min(127, r), g, b)
 
 def planet_density_distribution():
-	PLANET_A_DENCITY = 7 # Альфа, масштаб распределения Вейбулла
-	PLANET_B_DENCITY = 1.5 # Бета, форма распределения Вейбулла
+	PLANET_A_DENSITY = 7 # Альфа, масштаб распределения Вейбулла
+	PLANET_B_DENSITY = 1.5 # Бета, форма распределения Вейбулла
 	if randint(0, 500) == 21: # Вероятность создания черной дыры
-		return PLANET_MAX_DENCITY * 1000
-	return min(PLANET_MAX_DENCITY, PLANET_A_DENCITY / 2 + weibullvariate(PLANET_A_DENCITY, PLANET_B_DENCITY))
+		return PLANET_MAX_DENSITY * 1000
+	return min(PLANET_MAX_DENSITY, PLANET_A_DENSITY / 2 + weibullvariate(PLANET_A_DENSITY, PLANET_B_DENSITY))
 
 def planets_create(count):
 	planets = []
@@ -122,6 +123,12 @@ def is_collide_planets(planets, x, y, delta):
 		if planet.is_collided(x, y, delta):
 			return True
 	return False
+
+def collided_planet(planets, x, y, delta):
+	for planet in planets:
+		if planet.is_collided(x, y, delta):
+			return planet
+	return None
 
 def calculate_acceleration(planets, x, y):
 	acceleration_x = 0
@@ -174,6 +181,7 @@ class ProjectileState:
 	MOVING = 'moving'
 	WAITING = 'waiting'
 	EXPLODING = 'exploding'
+	SCOUTING = 'scouting'
 
 class Projectile:
 	def __init__(self, state, x, y):
@@ -182,6 +190,7 @@ class Projectile:
 		self.position = (x, y)
 		self.velocity_x = 0
 		self.velocity_y = 0
+		#self.speed = 0
 		#self.velocityAngle = atan2(velocity_x, velocity_y)
 		self.acceleration_x = 0
 		self.acceleration_y = 0
@@ -193,10 +202,15 @@ class Projectile:
 		self.acceleration_x, self.acceleration_y = calculate_acceleration(planets, self.x, self.y)
 		self.velocity_x += self.acceleration_x
 		self.velocity_y += self.acceleration_y
+		#self.speed = (self.velocity_x**2 + self.velocity_y**2)**0.5
 		self.x += self.velocity_x
 		self.y += self.velocity_y
 		self.position = (self.x, self.y)
-		if is_collide_planets(planets, self.x, self.y, 0):
+		exploded_planet = collided_planet(planets, self.x, self.y, 0)
+		if exploded_planet is not None:
+			radius = 5 * ((self.velocity_x**2 + self.velocity_y**2) / exploded_planet.density )**0.5
+			if self.state != ProjectileState.SCOUTING:
+				exploded_planet.holes.append(Hole(self.x, self.y, radius))
 			self.state = ProjectileState.EXPLODING
 
 	def shoot(self, speed, angle):
@@ -207,8 +221,8 @@ class Projectile:
 	def draw(self, screen):
 		if self.state == ProjectileState.MOVING:
 			pygame.draw.circle(screen, self.color, self.position, self.radius)
-		elif self.state == ProjectileState.EXPLODING:
-			pygame.draw.circle(screen, COLOR_BACKGROUND, self.position, 20)
+		# elif self.state == ProjectileState.EXPLODING:
+		# 	pygame.draw.circle(screen, COLOR_BACKGROUND, self.position, 20)
 
 # Класс траектории
 class Trajectory:
@@ -229,11 +243,11 @@ class Trajectory:
 
 	def calculate(self, steps_count, planets):
 		self.coordinates = []
-		phantom_projectile = Projectile(ProjectileState.MOVING, self.x_start, self.y_start)
+		phantom_projectile = Projectile(ProjectileState.SCOUTING, self.x_start, self.y_start)
 		phantom_projectile.velocity_x, phantom_projectile.velocity_x = self.x_velocity, self.x_velocity
 		i = 0
 		while i < steps_count:
-			if phantom_projectile.state == ProjectileState.MOVING:
+			if phantom_projectile.state == ProjectileState.SCOUTING:
 				self.coordinates.append(phantom_projectile.position)
 			else:
 				break
@@ -284,7 +298,7 @@ class Game:
 		self.target.angle_speed = 0.1
 		self.startPosition = startPosition_create(self.planets)
 		self.projectile = Projectile(ProjectileState.WAITING, self.startPosition.x, self.startPosition.y)
-		self.projectile.velocity_x, self.projectile.velocity_y = (10, 0)
+		self.projectile.velocity_x, self.projectile.velocity_y = (3, 0)
 		self.trajectory = Trajectory(self.projectile.x, self.projectile.y, self.projectile.velocity_x, self.projectile.velocity_y)
 		self.trajectory.calculate(50, self.planets)
 
@@ -313,7 +327,7 @@ class Game:
 						self.state = GameState.QUIT
 					if event.key == pygame.K_SPACE:
 						if self.projectile.state == ProjectileState.WAITING:
-							self.projectile.shoot(10, 0)
+							self.projectile.shoot(3, 0)
 
 	def update(self):
 		if self.projectile.state == ProjectileState.MOVING:
@@ -332,7 +346,15 @@ class Game:
 		self.target.draw(SCREEN)
 		for planet in self.planets:
 			planet.draw(SCREEN)
+			if DEBUG_MODE:
+				SCREEN.blit(pygame.font.Font(None, 36).render(str(round(planet.density)), True, RED), (planet.x_planet, planet.y_planet))
+				try:
+					SCREEN.blit(pygame.font.Font(None, 36).render(str(round(planet.holes[0].radius)), True, RED), (planet.x_planet, planet.y_planet+40))
+				except:
+					pass
 		self.projectile.draw(SCREEN)
+		if DEBUG_MODE:
+			SCREEN.blit(pygame.font.Font(None, 36).render(str(round(self.projectile.speed)), True, RED), (self.projectile.x, self.projectile.y))
 		pygame.display.flip()
 
 	def run(self):
