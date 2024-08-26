@@ -130,6 +130,30 @@ class Planet:
             )
 
 
+class Projectile:
+    def __init__(
+            self, x_projectile: int,
+            y_projectile: int,
+            radius: int,
+            density: int
+            ):
+        """
+        Создание снаряда.
+
+        :param x_projectile: Координата x для центра снаряда.
+        :param y_projectile: Координата y для центра снаряда.
+        :param radius: Радиус снаряда.
+        :param density: Плотность снаряда.
+        """
+        self.x_planet = x_projectile
+        self.y_planet = y_projectile
+        self.position = (x_projectile, y_projectile)
+        self.radius = radius
+        self.density = density
+        self.color = COLOR_STARTPOSITION
+        self.mass = density * 4 / 3 * pi * radius**3 * .000001
+
+
 def planet_color_gradient(density):
     k = density / PLANET_MAX_DENCITY
     r = round(max(0, 255 * (k - 0.5)))
@@ -226,9 +250,20 @@ class Game:
                     for button in self.buttons_play:
                         if button.is_clicked(event.pos):
                             button.callback()
+                    self.shoot(event.pos)
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
                         self.state = GameState.QUIT
+
+    def shoot(self, target_position):
+        start_position = (0, 0)
+        projectile = Projectile(
+            x_projectile=start_position[0],
+            y_projectile=start_position[1],
+            radius=5,
+            density=10,
+        )
+        print(target_position)
 
     def update(self):
         pass
