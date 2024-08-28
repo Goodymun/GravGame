@@ -2,7 +2,7 @@ import pygame
 import os
 import sys
 from random import randint, weibullvariate
-from math import pi
+from math import pi, cos, sin, atan2
 
 # Инициализация Pygame
 pygame.init()
@@ -135,7 +135,10 @@ class Projectile:
             self, x_projectile: int,
             y_projectile: int,
             radius: int,
-            density: int
+            density: int,
+            # speed: int
+            velocity_x: int,
+            velocity_y: int
             ):
         """
         Создание снаряда.
@@ -145,13 +148,24 @@ class Projectile:
         :param radius: Радиус снаряда.
         :param density: Плотность снаряда.
         """
-        self.x_planet = x_projectile
-        self.y_planet = y_projectile
+        self.x_projectile = x_projectile
+        self.y_projectile = y_projectile
         self.position = (x_projectile, y_projectile)
         self.radius = radius
         self.density = density
         self.color = COLOR_STARTPOSITION
         self.mass = density * 4 / 3 * pi * radius**3 * .000001
+        # self.speed = speed
+        self.velocity_x = velocity_x
+        self.velocity_y = velocity_y
+
+    def update(self):
+        self.x_projectile += self.velocity_x
+        self.y_projectile += self.velocity_y
+        self.position = (self.x_projectile, self.y_projectile)
+
+    def draw(self, screen):
+        pygame.draw.circle(screen, self.color, self.position, self.radius)
 
 
 def planet_color_gradient(density):
@@ -218,6 +232,7 @@ class Game:
 
         ]
         self.planets = []
+        self.projectiles = []
 
     def start_game(self):
         self.state = GameState.PLAY
@@ -225,6 +240,7 @@ class Game:
 
     def regen(self):
         self.planets = planets_create(20)
+        self.projectiles = []
 
     def quit_game(self):
         pygame.quit()
@@ -239,40 +255,58 @@ class Game:
                 pygame.quit()
                 sys.exit()
 
+            if self.state == GameState.PLAY:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    all_battons = self.buttons_play
+                    if not any(
+                        button.is_clicked(event.pos) for button in all_battons
+                    ):
+                        self.shoot(event.pos)
+                    for button in self.buttons_play:
+                        if button.is_clicked(event.pos):
+                            button.callback()
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.state = GameState.QUIT
+
             if self.state == GameState.MENU:
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     for button in self.buttons_menu:
                         if button.is_clicked(event.pos):
                             button.callback()
 
-            if self.state == GameState.PLAY:
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    for button in self.buttons_play:
-                        if button.is_clicked(event.pos):
-                            button.callback()
-                    self.shoot(event.pos)
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        self.state = GameState.QUIT
-
     def shoot(self, target_position):
         start_position = (0, 0)
+        angle = atan2(
+            target_position[1] - start_position[1],
+            target_position[0] - start_position[0]
+            )
+        speed = 5
+        velocity_x = cos(angle) * speed
+        velocity_y = sin(angle) * speed
         projectile = Projectile(
             x_projectile=start_position[0],
             y_projectile=start_position[1],
             radius=5,
             density=10,
+            velocity_x=velocity_x,
+            velocity_y=velocity_y
         )
-        print(target_position)
+        self.projectiles.append(projectile)
 
     def update(self):
-        pass
+        for projectile in self.projectiles:
+            projectile.update()
 
     def draw(self):
         SCREEN.fill(COLOR_BACKGROUND)
 
         for planet in self.planets:
             planet.draw(SCREEN)
+
+        for projectile in self.projectiles:
+            projectile.draw(SCREEN)
 
         for batton in self.buttons_play:
             batton.draw(SCREEN)
